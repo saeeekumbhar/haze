@@ -1,19 +1,21 @@
 # haze
 > *Weather data, observed.*
 
-`haze` is a minimal, editorial, technical weather analytics dashboard engineered for exploring historical weather observations across major meteorological observation stations.
+`haze` is an interactive, publication-grade weather analytics dashboard engineered for exploring historical weather observations across major meteorological observation stations.
 
-Designed with an intentional publication-grade aesthetic—dark charcoal canvas, muted grey typography, desaturated slate accents, and generous whitespace—`haze` prioritizes analytical clarity, statistical correctness, and high-performance processing over generic templates.
+Designed with an intentional publication-grade aesthetic—dark charcoal canvas, muted grey typography, desaturated slate accents, glassmorphic card containers, and micro-animations—`haze` prioritizes analytical clarity, statistical correctness, and high-performance processing.
 
 ---
 
 ## 1. Key Highlights & Performance
 
-- **Scale**: Analyzes a dataset of **1,000,000 records** without lag.
+- **Scale**: Analyzes a dataset of **1,000,000 records** locally without lag.
 - **Memory Footprint**: Optimized from over 72 MB down to **23.8 MB** in memory via categorized strings and single-precision `float32` representations.
 - **Loading Speed**: Loads, validates, and parses 1M rows in **~1.1 seconds** with `@st.cache_data`.
-- **Render Responsiveness**: Decouples full-dataset statistical calculations (e.g. Pearson $r$ across 100% of records) from visual rendering (stratified sampling for WebGL/SVG scatter plots).
-- **Analytical Rigor**: Accurately addresses precipitation semantics, distinguishing instantaneous gauge observations from cumulative rainfall sums.
+- **Responsive Architecture**: Tabbed technical navigation with decoupled statistical math and GPU-accelerated Plotly visualizations.
+- **Biometeorological Modeling**: Computes NOAA Rothfusz Apparent Temperature (Heat Index) combining ambient thermal readings and relative humidity.
+- **Unsupervised Anomaly Detection**: Employs standardized Z-score filtering ($|Z| \ge 2.0$) to isolate extreme weather anomalies.
+- **Parametric & Non-Parametric Metrics**: Seamless toggle between Arithmetic Means and Robust Percentiles (P10, P25, Median/P50, P75, P90).
 
 ---
 
@@ -27,10 +29,11 @@ Designed with an intentional publication-grade aesthetic—dark charcoal canvas,
 - **Variables**:
   - `Location` (Categorical station identifier)
   - `Date_Time` (Timestamp at irregular high-frequency intervals)
-  - `Temperature_C` (Ambient temperature in °C)
+  - `Temperature_C` (Ambient dry-bulb temperature in °C)
   - `Humidity_pct` (Relative humidity percentage in %)
   - `Precipitation_mm` (Instantaneous precipitation gauge measurement in mm)
   - `Wind_Speed_kmh` (Wind velocity in km/h)
+  - `Heat_Index_C` (Engineered NOAA Apparent Temperature in °C)
 - **Data Quality**: 0 missing values, 0 duplicate rows.
 
 ---
@@ -42,7 +45,7 @@ haze/
 ├── .streamlit/
 │   └── config.toml         # Custom dark theme and server settings
 ├── app.py                  # Streamlit dashboard layout, views, and interactivity
-├── requirements.txt        # Minimal Python dependencies
+├── requirements.txt        # Python dependencies
 ├── README.md               # Architecture, execution guide, and analytical methods
 ├── PRESENTATION_NOTES.md   # Viva examination prep, viva Q&A, and detailed notes
 ├── data/
@@ -51,20 +54,13 @@ haze/
     └── analysis.py         # Vectorized loading, caching, aggregations, and insights
 ```
 
-### Module Responsibilities
-
-- **`app.py`**:
-  - Encapsulates Streamlit interface, sidebar filter bindings, metric card layout, Plotly visual orchestration, and user session management.
-- **`utils/analysis.py`**:
-  - Encapsulates core data engineering: schema validation, optimized type coercion, dynamic temporal aggregation (`Daily`, `Weekly`, `Monthly`), correlation calculation, and automated analytical insight derivation.
-
 ---
 
 ## 4. Analytical Findings & Data Semantics
 
 1. **Precipitation Semantics**:
-   - Every single observation in the dataset contains a positive precipitation reading (0% zero-value records), with records logged at irregular seconds-level intervals.
-   - A naive sum of the `Precipitation_mm` column yields ~500,000 mm (~500 meters of water), which is physically impossible.
+   - Every single observation in the dataset contains a positive precipitation reading (0% zero-value records) sampled across seconds-level intervals.
+   - Naively summing the column yields ~500,000 mm of rain, which is physically impossible.
    - **Conclusion**: The column represents instantaneous gauge readings / observation rates. The dashboard computes mean rate (`5.11 mm/obs`) and daily average rate rather than an unweighted cumulative sum.
 
 2. **The Phoenix Anomaly**:
@@ -78,12 +74,29 @@ haze/
 
 ---
 
-## 5. Installation and Execution
+## 5. Dashboard Sections & Interactive Tabs
 
-### Prerequisites
-- Python 3.9+ (Python 3.11 recommended)
+1. **Header & Archive Metadata**: Displays archive scope, active record count, and station coverage.
+2. **Filter Controls**: Multi-station selector with quick actions ("Select All", "Reset Filters"), interval date picker, variable selector, aggregation resolution slider, and KPI mode switcher.
+3. **Animated Metric Cards**: Four micro-animated cards displaying Average Temperature / Median (P50), Humidity, Precipitation Rate, and Wind Speed with contextual subtext.
+4. **Tab 01 // Overview & Dynamics**:
+   - Time-series evolution chart with min-max confidence envelope.
+   - Station ranking bar chart and frequency distribution histogram (dynamically responsive to the selected primary variable).
+   - Bivariate scatter plot and cross-variable correlation heatmap.
+   - Dynamic data-backed observations cards.
+5. **Tab 02 // Station Head-to-Head**:
+   - Comparative analytics between any two chosen stations with delta metrics ($\Delta$ Mean, $\Delta$ Range, Std Deviation spread) and an overlapping distribution histogram.
+6. **Tab 03 // Diurnal Cycles & Heat Index**:
+   - 24-hour diurnal cycle curve (hours 00 to 23) with standard deviation bounds.
+   - NOAA Rothfusz Apparent Temperature Index modeling.
+7. **Tab 04 // Anomaly Detection**:
+   - Standardized Z-Score ($|Z| \ge \text{threshold}$) outlier identification isolating Phoenix sub-zero freezes and peak wind speed events.
+8. **Tab 05 // Data Explorer & Export**:
+   - Paginated tabular preview with column toggling and filtered CSV export.
 
-### Setup
+---
+
+## 6. Installation and Execution
 
 ```bash
 # Clone or navigate to the repository
@@ -97,18 +110,3 @@ streamlit run app.py
 ```
 
 Open your browser at `http://localhost:8501`.
-
----
-
-## 6. Dashboard Sections
-
-1. **Header & Archive Metadata**: Displays archive scope, active record count, and station coverage.
-2. **Filter Controls**: Multi-location selector with quick actions ("Select All", "Reset Filters"), interval date picker, variable selector, and aggregation resolution slider.
-3. **Summary Metric Cards**: Four compact KPIs (Average Temperature, Average Humidity, Precipitation Rate, Average Wind Speed) with min/max and contextual subtext.
-4. **Temporal Evolution**: Interactive line chart showing the progression of any selected weather parameter with min-max confidence bands and optional station disaggregation.
-5. **Location Comparison**: Horizontal bar chart ranking stations by average parameter values.
-6. **Temperature Distribution**: Histogram with mean and median reference lines.
-7. **Bivariate Scatter & Correlation Matrix**: Scatter plot with rendered sample and full-population correlation coefficient, paired with a Pearson correlation heatmap.
-8. **Precipitation Analysis**: Station comparison of mean gauge rates and temporal trends, accompanied by an analytical methodology note.
-9. **Observations (`observations`)**: Dynamically generated, data-grounded insights citing exact values, locations, and timestamps.
-10. **Data Explorer**: Paginated tabular preview with column toggling and filtered CSV export.
