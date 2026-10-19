@@ -330,7 +330,7 @@ def get_head_to_head_comparison(
 def detect_anomalies(
     df: pd.DataFrame,
     variable: str = 'Temperature_C',
-    threshold_z: float = 2.5,
+    threshold_z: float = 2.0,
     max_records: int = 50
 ) -> pd.DataFrame:
     """
